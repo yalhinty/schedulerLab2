@@ -63,8 +63,8 @@ struct proc {
   char cwd[CWD];               // Current directory
   char name[PNAME];            // Process name (debugging
   int vruntime;            // Amount of time a process has run
-  int niceness;
-  int weight;
+  double niceness;
+  double weight;
   int timeSlice;
 
   //clock_t start_t;             // Start time of the process

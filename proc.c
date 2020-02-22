@@ -12,6 +12,7 @@
 #include "defs.h"
 #include "proc.h"
 #include <time.h>
+#include <math.h>
 
 static void wakeup1(int chan);
 
@@ -296,11 +297,20 @@ void scheduler(void){
   	acquire(&ptable.lock);
   	printf("table created\n");
 
-  	int sched_latency = 48;
-  	int min_granularity = 6;
+  	double sched_latency = 48;
+  	double min_granularity = 6;
+	double weight = 0; 
+	double niceness = 0;	
+	
 
-  	//calculate the weight
-  	int totalWeight = 0;
+	// calculate weight
+	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){	
+		p->weight = 1024/(pow(1.25, niceness));
+//		printf("%f weight\n", p->weight);
+	}
+
+  	//calculate the total weight
+  	double totalWeight = 0;
   	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
   		if (p->state == RUNNABLE){
   			totalWeight += p->weight;
@@ -309,14 +319,14 @@ void scheduler(void){
 	printf("weight calculated\n");
 
 	//find minimum runtime in the table
-	int min = ptable.proc->vruntime;
+	double min = ptable.proc->vruntime;
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     	if(p->vruntime < min){
       		min = p->vruntime;
 		}
 	}
 	printf("minimum runtime found\n");
-
+	//totalWeight = 5; trying to figure out why it core dumped-cause totalweight was 0 at the time
 	//set time slices
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		if (p->state == RUNNABLE){
