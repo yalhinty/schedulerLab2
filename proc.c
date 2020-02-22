@@ -104,9 +104,10 @@ int userinit(void)
   strcpy(p->name, "userinit"); 
   p->state = RUNNING;
   curr_proc = p;
-  p->start_t = 0;
-  p->end_t = 0;
-  p->runtime = 0;
+  //p->start_t = 0;
+  //p->end_t = 0;
+  p->vruntime = 0;
+  p->weight = 0;
   return p->pid;
 }
 
@@ -291,35 +292,46 @@ int Kill(int pid)
 //This works because p is just the pid
 void scheduler(void){
 
-  struct proc *p;
-  acquire(&ptable.lock);
+  	struct proc *p;
+  	acquire(&ptable.lock);
+  	printf("table created\n");
 
-  int sched_latency = 48;
-  int min_granularity = 6;
+  	int sched_latency = 48;
+  	int min_granularity = 6;
 
-  //calculate the weight
-  int totalWeight = 0;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-  	if (p->state == RUNNABLE){
-  		totalWeight += p->weight;
-  	}
-  }
+  	//calculate the weight
+  	int totalWeight = 0;
+  	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  		if (p->state == RUNNABLE){
+  			totalWeight += p->weight;
+		}
+	}
+	printf("weight calculated\n");
 
-  
 	//find minimum runtime in the table
 	int min = ptable.proc->vruntime;
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    	if(p->runtime < min){
-      		min = p->runtime;
+    	if(p->vruntime < min){
+      		min = p->vruntime;
 		}
 	}
+	printf("minimum runtime found\n");
 
 	//set time slices
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		if (p->state == RUNNABLE){
+			printf("runnable\n");
+			
 			p->timeSlice = p->weight / totalWeight * sched_latency;
+			printf("time slice : %d\n", p->timeSlice);
+			if (p->timeSlice < min_granularity){
+				printf("oops too small\n");
+				p->timeSlice = min_granularity;
+			}
 		}
 	}
+
+	printf("time slices set\n");
 
 	//turn off the one that's running
 	curr_proc->state = RUNNABLE;
@@ -329,14 +341,13 @@ void scheduler(void){
   
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     
-    curr_proc = p;
+    	curr_proc = p;
 
-    if(p->state == RUNNABLE && p->runtime <= min){
-      p->state = RUNNING;
-      p->start_t = clock();
-    }
-  
-    break;
+	    if(p->state == RUNNABLE && p->vruntime <= min){
+    		p->state = RUNNING;
+      		p->vruntime += 1;
+      		break;
+    	}
   
   }
   release(&ptable.lock);
@@ -354,6 +365,7 @@ void procdump(void)
     if(p->pid > 0)
       printf("pid: %d, parent: %d state: %s\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state]);
 }
+
 
 
 
