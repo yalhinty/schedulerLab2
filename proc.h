@@ -13,7 +13,7 @@
 #define NCPU          8  // maximum number of CPUs
 #include <time.h>
 #include <stdio.h>
-
+//please work
 
 // Per-CPU state
 struct cpu {
