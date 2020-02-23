@@ -3,16 +3,12 @@
 *       adapted from MIT xv6 by Zhiyi Huang, hzy@cs.otago.ac.nz, University of Otago
 ********************************************************************/
 
-/*proc module, contains code to implement processes*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "types.h"
 #include "defs.h"
 #include "proc.h"
-#include <time.h>
-#include <math.h>
 
 static void wakeup1(int chan);
 
@@ -41,17 +37,20 @@ static struct proc *initproc;
 int nextpid = 1;
 
 // Funtion to use as address of proc's PC
-void forkret(void)
+void
+forkret(void)
 {
 }
 
 // Funtion to use as address of proc's LR
-void trapret(void)
+void
+trapret(void)
 {
 }
 
 // Initialize the process table
-void pinit(void)
+void
+pinit(void)
 {
   memset(&ptable, 0, sizeof(ptable));
 }
@@ -59,7 +58,8 @@ void pinit(void)
 // Look in the process table for a process id
 // If found, return pointer to proc
 // Otherwise return 0.
-static struct proc* findproc(int pid)
+static struct proc*
+findproc(int pid)
 {
   struct proc *p;
 
@@ -73,7 +73,8 @@ static struct proc* findproc(int pid)
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
-static struct proc* allocproc(void)
+static struct proc*
+allocproc(void)
 {
   struct proc *p;
 
@@ -95,7 +96,8 @@ found:
 }
 
 // Set up first user process.
-int userinit(void)
+int
+userinit(void)
 {
   struct proc *p;
   p = allocproc();
@@ -105,17 +107,14 @@ int userinit(void)
   strcpy(p->name, "userinit"); 
   p->state = RUNNING;
   curr_proc = p;
-  //p->start_t = 0;
-  //p->end_t = 0;
-  p->vruntime = 0;
-  p->weight = 0;
   return p->pid;
 }
 
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
-int Fork(int fork_proc_id)
+int
+Fork(int fork_proc_id)
 {
   int pid;
   struct proc *np, *fork_proc;
@@ -143,7 +142,8 @@ int Fork(int fork_proc_id)
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
-int Exit(int exit_proc_id)
+int
+Exit(int exit_proc_id)
 {
   struct proc *p, *exit_proc;
 
@@ -181,7 +181,8 @@ int Exit(int exit_proc_id)
 // Return -1 if this process has no children.
 // Return -2 has children, but not zombie - must keep waiting
 // Return -3 if wait_proc_id is not found
-int Wait(int wait_proc_id)
+int
+Wait(int wait_proc_id)
 {
   struct proc *p, *wait_proc;
   int havekids, pid;
@@ -228,7 +229,8 @@ int Wait(int wait_proc_id)
 
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
-int Sleep(int sleep_proc_id, int chan)
+int
+Sleep(int sleep_proc_id, int chan)
 {
   struct proc *sleep_proc;
   // Find current proc
@@ -242,7 +244,8 @@ int Sleep(int sleep_proc_id, int chan)
 
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
-static void wakeup1(int chan)
+static void
+wakeup1(int chan)
 {
   struct proc *p;
 
@@ -252,7 +255,8 @@ static void wakeup1(int chan)
 }
 
 
-void Wakeup(int chan)
+void
+Wakeup(int chan)
 {
   acquire(&ptable.lock);
   wakeup1(chan);
@@ -264,7 +268,8 @@ void Wakeup(int chan)
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
-int Kill(int pid)
+int
+Kill(int pid)
 {
   struct proc *p;
 
@@ -289,76 +294,26 @@ int Kill(int pid)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+void
+scheduler(void)
+{
+// A continous loop in real code
+//  if(first_sched) first_sched = 0;
+//  else sti();
 
-//This works because p is just the pid
-void scheduler(void){
+  curr_proc->state = RUNNABLE;
 
-  	struct proc *p;
-  	acquire(&ptable.lock);
-  	printf("table created\n");
+  struct proc *p;
 
-  	double sched_latency = 48;
-  	double min_granularity = 6;
-	double weight = 0; 
-	double niceness = 0;	
-	
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p == curr_proc || p->state != RUNNABLE)
+      continue;
 
-	// calculate weight
-	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){	
-		p->weight = 1024/(pow(1.25, niceness));
-//		printf("%f weight\n", p->weight);
-	}
-
-  	//calculate the total weight
-  	double totalWeight = 0;
-  	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-  		if (p->state == RUNNABLE){
-  			totalWeight += p->weight;
-		}
-	}
-	printf("weight calculated\n");
-
-	//find minimum runtime in the table
-	double min = ptable.proc->vruntime;
-	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    	if(p->vruntime < min){
-      		min = p->vruntime;
-		}
-	}
-	printf("minimum runtime found\n");
-	//totalWeight = 5; trying to figure out why it core dumped-cause totalweight was 0 at the time
-	//set time slices
-	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-		if (p->state == RUNNABLE){
-			printf("runnable\n");
-			
-			p->timeSlice = p->weight / totalWeight * sched_latency;
-			printf("time slice : %d\n", p->timeSlice);
-			if (p->timeSlice < min_granularity){
-				printf("oops too small\n");
-				p->timeSlice = min_granularity;
-			}
-		}
-	}
-
-	printf("time slices set\n");
-
-	//turn off the one that's running
-	curr_proc->state = RUNNABLE;
-	//curr_proc->end_t = clock();
-	//curr_proc->runtime += (double)(curr_proc->end_t-curr_proc->start_t)/CLOCKS_PER_SEC;
- 
-  
-	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    
-    	curr_proc = p;
-
-	    if(p->state == RUNNABLE && p->vruntime <= min){
-    		p->state = RUNNING;
-      		p->vruntime += 1;
-      		break;
-    	}
-  
+    // Switch to chosen process.
+    curr_proc = p;
+    p->state = RUNNING;
+    break;
   }
   release(&ptable.lock);
 
@@ -367,7 +322,8 @@ void scheduler(void){
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
-void procdump(void)
+void
+procdump(void)
 {
   struct proc *p;
 

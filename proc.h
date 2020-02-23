@@ -3,17 +3,13 @@
 *       adapted from MIT xv6 by Zhiyi Huang, hzy@cs.otago.ac.nz, University of Otago
 ********************************************************************/
 
-/*proc module, contains code to implement processes*/
-
 #define NPROC        64  // maximum number of processes
 #define NFILE        16  // maximum number of open files
 #define CWD          64  // chars in cwd
 #define PNAME        16  // chars in process name
 #define PGSIZE     4096  // size of initial pages for proc
 #define NCPU          8  // maximum number of CPUs
-#include <time.h>
-#include <stdio.h>
-//please work
+
 
 // Per-CPU state
 struct cpu {
@@ -61,14 +57,7 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   char ofiles[NFILE];          // Open files
   char cwd[CWD];               // Current directory
-  char name[PNAME];            // Process name (debugging
-  int vruntime;            // Amount of time a process has run
-  double niceness;
-  double weight;
-  int timeSlice;
-
-  //clock_t start_t;             // Start time of the process
-  //clock_t end_t;               // End time of the process
+  char name[PNAME];            // Process name (debugging)
 };
 
 
