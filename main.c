@@ -32,7 +32,7 @@ int local_scheduler() {
 int main()
 {
     pinit(); // initialize process table
-    curr_proc_id = userinit(5); // create first user process
+    curr_proc_id = userinit(1); // create first user process
     char cmd[MAX_COMMAND_LENGTH + 1];
     char* params[MAX_NUMBER_OF_PARAMS + 1];
     int cmdCount = 0, nparams = 0;

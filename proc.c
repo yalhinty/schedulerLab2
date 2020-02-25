@@ -375,7 +375,7 @@ void procdump(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->pid > 0)
-	printf("pid: %d, parent: %d, state: %s\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state]);
+	printf("pid: %d, parent: %d, state: %s, times it ran: %d\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state], p->runtimeSoFar);
 }
 
 
