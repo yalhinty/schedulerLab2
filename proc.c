@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "types.h"
 #include "defs.h"
 #include "proc.h"
@@ -22,7 +23,7 @@ void release(int *p) {
 }
 
 // enum procstate for printing
-char *procstatep[] = { "UNUSED", "EMPRYO", "SLEEPING", "RUNNABLE", "RUNNING", "ZOMBIE" };
+char *procstatep[] = { "UNUSED", "EMPRYO", "SLEEPING", "RUNNABLE", "RUNNING", "ZOMBIE"};
 
 // Table of all processes
 struct {
@@ -96,9 +97,7 @@ found:
 }
 
 // Set up first user process.
-int
-userinit(void)
-{
+int userinit(int procRuntime) {
   struct proc *p;
   p = allocproc();
   initproc = p;
@@ -106,6 +105,8 @@ userinit(void)
   strcpy(p->cwd, "/");
   strcpy(p->name, "userinit"); 
   p->state = RUNNING;
+  p->runtimeSoFar = 0;
+  p->procRuntime = procRuntime;
   curr_proc = p;
   return p->pid;
 }
@@ -113,37 +114,33 @@ userinit(void)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
-int
-Fork(int fork_proc_id)
-{
+int Fork(int runtime, int fork_proc_id) {
   int pid;
   struct proc *np, *fork_proc;
-
   // Find current proc
   if ((fork_proc = findproc(fork_proc_id)) == 0)
     return -1;
-
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
-
   // Copy process state from p.
   np->sz = fork_proc->sz;
   np->parent = fork_proc;
   // Copy files in real code
   strcpy(np->cwd, fork_proc->cwd);
- 
   pid = np->pid;
   np->state = RUNNABLE;
+//printf("state is runnable\n");
   strcpy(np->name, fork_proc->name);
+  np->procRuntime = runtime;
+  np->runtimeSoFar = 0;
   return pid;
 }
 
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
-int
-Exit(int exit_proc_id)
+int Exit(int exit_proc_id)
 {
   struct proc *p, *exit_proc;
 
@@ -181,8 +178,7 @@ Exit(int exit_proc_id)
 // Return -1 if this process has no children.
 // Return -2 has children, but not zombie - must keep waiting
 // Return -3 if wait_proc_id is not found
-int
-Wait(int wait_proc_id)
+int Wait(int wait_proc_id)
 {
   struct proc *p, *wait_proc;
   int havekids, pid;
@@ -294,44 +290,88 @@ Kill(int pid)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
-scheduler(void)
-{
+void scheduler(void) {
 // A continous loop in real code
 //  if(first_sched) first_sched = 0;
 //  else sti();
+   	struct proc *p;
+   	acquire(&ptable.lock);
 
-  curr_proc->state = RUNNABLE;
+	int timeSlice = 1;     // in seconds
+  	clock_t startTime = clock();
+	int numProcs = 1;
+        int timeRun = 0;
+        int totalTime = 0;	
 
-  struct proc *p;
+	//iterate through the table to find the total time it will take for all processes
 
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p == curr_proc || p->state != RUNNABLE)
-      continue;
+	curr_proc->state = RUNNABLE;
 
-    // Switch to chosen process.
-    curr_proc = p;
-    p->state = RUNNING;
-    break;
-  }
-  release(&ptable.lock);
+   	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      		if(p->state == RUNNABLE){
+         		totalTime += p->procRuntime;
+			numProcs++;
+      		}
+   	}
 
+   	int totalTimeMilliseconds = totalTime * 1000;
+	
+	//iterate through the table
+   	p = ptable.proc;
+	
+   	while(p < &ptable.proc[NPROC] && numProcs > 0){
+		if(p->state == RUNNING){
+			p->state = RUNNABLE;
+			p++;
+		}
+    		// if the time that's passed is less than the total time it will take for all processes to run
+//      	if(clock() < startTime + totalTimeMilliseconds){
+		if(timeRun <= totalTime && p->state == RUNNABLE){
+        	 	// start the next one
+        		curr_proc = p;
+	 	 	p->state = RUNNING;
+        	 	// and wait for a time slice
+       		 	sleep(timeSlice);
+         		// add the time slice time 
+         		p->runtimeSoFar += timeSlice;
+			timeRun =+ timeSlice; 
+
+                if(numProcs == 1) {
+                        break;
+                }
+
+                if(p->procRuntime <= p->runtimeSoFar) {
+                        printf("process completed %d \n ", p);
+                        numProcs--;
+                        p->state = ZOMBIE;
+      		     }
+		if(numProcs == 0) {
+			break;	
+		}
+	}
+	    
+      	//if we're at the last one, reset
+      	//otherwise, p += 1
+      	if (p == &ptable.proc[NPROC-1]){
+         	p = ptable.proc;
+	} else {
+         	p++;
+      	}
+	//	printf("State of p:%s \n", procstatep[p->state]);
+   }
+   release(&ptable.lock);
 }
 
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
-void
-procdump(void)
+void procdump(void)
 {
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->pid > 0)
-      printf("pid: %d, parent: %d state: %s\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state]);
+	printf("pid: %d, parent: %d, state: %s\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state]);
 }
-
-
 
 

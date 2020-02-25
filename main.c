@@ -16,7 +16,7 @@ void parseCmd(char* cmd, char** params, int *nparams);
 int executeCmd(char** params, int nparams);
 
 #define MAX_COMMAND_LENGTH 100
-#define MAX_NUMBER_OF_PARAMS 10
+#define MAX_NUMBER_OF_PARAMS 16
 
 enum cmds        { FORK=0, SETPID,   SHOWPID,   WAIT,   EXIT,   SLEEP,   WAKEUP,   PS,   SCHEDULE,  TIMER,    HELP,   QUIT };
 char *cmdstr[] = {"fork", "Setpid", "currpid",  "wait", "exit", "sleep", "wakeup", "ps",   "schedule", "timer", "help", "quit"};
@@ -32,7 +32,7 @@ int local_scheduler() {
 int main()
 {
     pinit(); // initialize process table
-    curr_proc_id = userinit(); // create first user process
+    curr_proc_id = userinit(5); // create first user process
     char cmd[MAX_COMMAND_LENGTH + 1];
     char* params[MAX_NUMBER_OF_PARAMS + 1];
     int cmdCount = 0, nparams = 0;
@@ -55,9 +55,14 @@ int main()
 void parseCmd(char* cmd, char** params, int *nparams)
 {       
     for(int i = 0; i < MAX_NUMBER_OF_PARAMS; i++) {
+//printf("parseError 1 %d\n", *nparams);
         params[i] = strsep(&cmd, " ");
-        if(params[i] == NULL) break;
-        (*nparams)++;
+//printf("parseError 2 %s\n", params[i]);
+        if(params[i] == NULL) {
+	 break;
+	}
+//printf("parseError 3 %d\n", *nparams);
+	        (*nparams)++;
     }
 }
 
@@ -69,20 +74,21 @@ int executeCmd(char** params, int nparams)
     for (cmd_index = 0; cmd_index < ncmds; cmd_index++)
         if (strcmp(params[0], cmdstr[cmd_index]) == 0)
             break;
-
-    //for (int i = 0; i < nparams; i++)
-        //printf("Param %d: %s\n", i, params[i]);
-    //printf("ncmds: %d, cmd_index: %d\n", ncmds, cmd_index);
+    for (int i = 0; i < nparams; i++)
+        printf("Param %d: %s\n", i, params[i]);
+    printf("ncmds: %d, cmd_index: %d\n", ncmds, cmd_index);
     
     switch (cmd_index) {
     case FORK:
-        if (nparams > 1)
-            pid = atoi(params[1]);
-        else
+        if (nparams > 2) {
+            pid = atoi(params[2]);
+        }else
             pid = curr_proc->pid;
-        int fpid = Fork(pid);
+        int runtime = atoi(params[1]);
+        int fpid = Fork(runtime, pid);
         printf("pid: %d forked: %d\n", pid, fpid);
         break;
+    printf("it broke\n");
     case SETPID:
         if (nparams == 1)
             printf("setpid cmd requires pid parameter\n");
@@ -165,5 +171,7 @@ int executeCmd(char** params, int nparams)
     
     return rc;
 }
+
+
 
 

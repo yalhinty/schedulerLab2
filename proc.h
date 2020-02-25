@@ -43,7 +43,7 @@ struct context {
   uint pc;
 };
 
-enum procstate { UNUSED=0, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED=0, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
 
 // Per-process state
 struct proc {
@@ -58,7 +58,11 @@ struct proc {
   char ofiles[NFILE];          // Open files
   char cwd[CWD];               // Current directory
   char name[PNAME];            // Process name (debugging)
+  int procRuntime;
+  int runtimeSoFar;
 };
+
+
 
 
 
