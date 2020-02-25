@@ -318,13 +318,13 @@ void scheduler(void) {
 	
 	//iterate through the table
    	p = ptable.proc;
-	
+	numProcs--;
    	while(p < &ptable.proc[NPROC] && numProcs > 0){
 		if(p->state == RUNNING){
 			p->state = RUNNABLE;
 			p++;
 		}
-		if(p->state == SLEEPING){
+		if(p->state == SLEEPING || p->state == ZOMBIE){
 	//		p->state = RUNNABLE;
 			p++;
 		}
@@ -344,14 +344,15 @@ void scheduler(void) {
 		}
 
                 if(p->procRuntime <= p->runtimeSoFar) {
-                        printf("process completed %d \n ", p->pid);
-                        numProcs--;
+                        printf("process completed %d %d \n ", p->pid, numProcs);
+                     //   numProcs--;
                         p->state = ZOMBIE;
       		     }
 		if(numProcs == 0) {
 			break;	
 		}
-	}
+			numProcs--;	
+}
 	    
       	//if we're at the last one, reset
       	//otherwise, p += 1
