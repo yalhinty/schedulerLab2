@@ -324,9 +324,12 @@ void scheduler(void) {
 			p->state = RUNNABLE;
 			p++;
 		}
+		if(p->state == SLEEPING){
+	//		p->state = RUNNABLE;
+			p++;
+		}
     		// if the time that's passed is less than the total time it will take for all processes to run
-//      	if(clock() < startTime + totalTimeMilliseconds){
-		if(timeRun <= totalTime && p->state == RUNNABLE){
+		if(timeRun < totalTime){
         	 	// start the next one
         		curr_proc = p;
 	 	 	p->state = RUNNING;
@@ -334,14 +337,14 @@ void scheduler(void) {
        		 	sleep(timeSlice);
          		// add the time slice time 
          		p->runtimeSoFar += timeSlice;
-			timeRun =+ timeSlice; 
-
-                if(numProcs == 1) {
-                        break;
-                }
+			timeRun =+ timeSlice;
+	
+		if(p->pid != 0) {
+			printf("process: %d, runtime %d \n", p->pid, p->runtimeSoFar); 
+		}
 
                 if(p->procRuntime <= p->runtimeSoFar) {
-                        printf("process completed %d \n ", p);
+                        printf("process completed %d \n ", p->pid);
                         numProcs--;
                         p->state = ZOMBIE;
       		     }
